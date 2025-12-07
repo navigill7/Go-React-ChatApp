@@ -18,17 +18,18 @@ import (
 func UpdateUserOnlineStatusByUserID(userId, status string) error{
 	docID, err := primitive.ObjectIDFromHex(userId)
 	if err != nil{
-		errors.New("unable to extract Id from Hex Id")
+		return errors.New("unable to extract Id from Hex Id")
 	}
 
 	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	_, err = collection.UpdateOne(ctx, 
 	bson.M{"_id": docID},
 	bson.M{"$set": bson.M{"online": status}},
 	)
-	defer cancel()
+	
 	if err != nil{
 		return errors.New(constants.ServerFailedResponse)
 	}
@@ -98,7 +99,6 @@ func LoginQueryHandler(userDetailsRequest LoginRequest) (UserResponse, error){
 
 // check the username from the database
 func RegisterQueryHandler(userDetails RegistrationRequest) (string, error){
-
 	if userDetails.Username == ""{
 		return "", errors.New(constants.UsernameCantBeEmpty)
 	}else if userDetails.Password == ""{
@@ -111,24 +111,25 @@ func RegisterQueryHandler(userDetails RegistrationRequest) (string, error){
 
 		collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("users")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		
 		id := primitive.NewObjectID()
 		uid := id.Hex()
 
 		_, registrationErr := collection.InsertOne(ctx, bson.M{
+			"_id": id,
 			"username": userDetails.Username,
 			"password": newPasswordHash,
 			"online": "N",
 			"createdAt": time.Now(),
-			"id": id,
 		})
-		defer cancel()
 
 		if registrationErr != nil{
 			return "", errors.New(constants.ServerFailedResponse)
 		}
 
 		if onlineStatusError := UpdateUserOnlineStatusByUserID(uid, "Y"); onlineStatusError != nil {
-			return " ", errors.New(constants.ServerFailedResponse)
+			return "", errors.New(constants.ServerFailedResponse)
 		}
 		return uid, nil
 	}
@@ -184,6 +185,7 @@ func StoreNewMessages(message MessagePayload) bool{
 		"fromUserID": message.FromUserID,
 		"message":    message.Message,
 		"toUserID":   message.ToUserID,
+		"createdAt":  time.Now(),
 	})
 
 	return registrationError == nil
@@ -203,16 +205,15 @@ func GetConversationBetweenTwoUsers(toUser, fromUser string, page int64) []Messa
 				"toUserID": toUser,
 				"fromUserID": fromUser,
 			},
-
 			{
-				"fromUserID": fromUser,
-				"toUserID": toUser,
+				"fromUserID": toUser,
+				"toUserID": fromUser,
 			},
 		},
 	}
 
 	findOptions := options.Find()
-	findOptions.SetSort(bson.D{{"createdAt", -1}}) // 1= ascending, olderst to newest
+	findOptions.SetSort(bson.D{{"createdAt", -1}}) // -1 = descending, newest first
 	findOptions.SetLimit(limit)
 	findOptions.SetSkip((page-1)*limit)
 
@@ -229,10 +230,10 @@ func GetConversationBetweenTwoUsers(toUser, fromUser string, page int64) []Messa
 		}
 	}
 
-		// Optional: Reverse to display oldest-to-newest in UI
-		for i, j := 0, len(conversation)-1; i < j; i, j = i+1, j-1 {
-			conversation[i], conversation[j] = conversation[j], conversation[i]
-		}
+	// Reverse to display oldest-to-newest in UI
+	for i, j := 0, len(conversation)-1; i < j; i, j = i+1, j-1 {
+		conversation[i], conversation[j] = conversation[j], conversation[i]
+	}
 
 	return conversation
 }

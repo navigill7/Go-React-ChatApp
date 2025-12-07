@@ -19,9 +19,7 @@ func main(){
 		log.Fatal("Error loading the environment")
 	}
 
-	fmt.Println(
-		fmt.Sprintf("%s%s%s%s", "Server will start at http://", os.Getenv("HOST"), ":", os.Getenv("PORT")),
-	)
+	fmt.Printf("%s%s%s%s\n", "Server will start at http://", os.Getenv("HOST"), ":", os.Getenv("PORT"))
 
 	config.ConnectDatabase()
 

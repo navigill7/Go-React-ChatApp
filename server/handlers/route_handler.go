@@ -236,7 +236,7 @@ func GetMessagesHandler() gin.HandlerFunc{
 		}
 
 		page, err := strconv.Atoi(c.Query("page"))
-		if err != nil{
+		if err != nil || page < 1{
 			log.Panic(err)
 		}
 		var pagee int64 = int64(page)
