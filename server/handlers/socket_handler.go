@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// pingPeriod < pongWait, 6-second buffer in case a pong is a bit delayed.
 const (
 	writeWait = 10 *time.Second		// prevents server hang, conn doesnt wait forever to send
 	pongWait = 60 *time.Second		// keeps the server waiting too long, if client disconnects
