@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8080'; // Update if your Go server runs elsewhere
+const API_BASE = 'http://localhost:8080';
 
 export const authApi = {
   async checkUsername(username) {
